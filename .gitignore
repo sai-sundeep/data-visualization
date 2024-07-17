@@ -1,5 +1,7 @@
 # Additional Files
 *.zip
+*_prediction.py
+*_prediction.ipynb
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
