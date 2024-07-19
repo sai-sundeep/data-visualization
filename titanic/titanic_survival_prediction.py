@@ -89,6 +89,8 @@ def plot_roc_curve(y_test, y_pred_probs, title):
     axs.set_title(f"{title} (ROC) Curve")
     axs.legend(loc="lower right")
     plt.grid()
+    file_name = "_".join(title.lower().split(" "))
+    plt.savefig(f"{file_name}_roc_curve.png")
     plt.show()
 
 
