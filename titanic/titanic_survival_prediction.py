@@ -95,14 +95,18 @@ def plot_roc_curve(y_test, y_pred_probs, title):
 
 
 def train_logistic_regression():
-    logreg = LogisticRegression()
+    steps = [
+        ("Scaler", StandardScaler()),
+        ("logreg", LogisticRegression())
+    ]
     params = {
-        "penalty": ["l1", "l2"],
-        "C": np.linspace(0.001, 0.1, 20),
-        "solver": ["liblinear"]
+        "logreg__penalty": ["l1", "l2"],
+        "logreg__C": np.linspace(0.001, 0.1, 20),
+        "logreg__solver": ["liblinear"]
     }
+    pipeline = Pipeline(steps)
     kf = KFold(n_splits=10, shuffle=True, random_state=10)
-    logreg_grid = GridSearchCV(estimator=logreg, param_grid=params, cv=kf, scoring="accuracy")
+    logreg_grid = GridSearchCV(estimator=pipeline, param_grid=params, cv=kf, scoring="accuracy")
     logreg_grid.fit(X_train, y_train)
     print(f"Best Parameters: {logreg_grid.best_params_}")
     print(f"Best Cross-Validation Accuracy: {logreg_grid.best_score_:.2f}")
@@ -114,6 +118,7 @@ def train_logistic_regression():
     print(f"Confusion Matrix: \n {confusion_matrix(y_test, y_pred)}")
     print(f"Classification Report: \n {classification_report(y_test, y_pred)}")
     plot_roc_curve(y_test, y_pred_probs, title="Logistic Regression")
+    print(logreg_grid.cv_results_)
 
 
 if __name__ == "__main__":
