@@ -56,7 +56,7 @@ from sklearn.metrics import precision_recall_curve, average_precision_score
 from sklearn.metrics import f1_score, precision_score, recall_score, accuracy_score
 
 X_train, y_train, X_test, y_test = [None] * 4
-logreg_model = None
+logreg_model, knn_model = [None] * 2
 training_features = []
 
 
@@ -112,8 +112,8 @@ def plot_feature_importance(estimator_coefs, model_name):
 
 def plot_precision_recall_curve(precision, recall, average_precision, model_name):
     plt.figure(figsize=(8, 6))
-    plt.step(recall, precision, color="darkblue", alpha=0.2, where="post")
-    plt.fill_between(recall, precision, step="post", alpha=0.2, color="blue")
+    plt.step(recall, precision, color="darkblue", where="post")
+    plt.fill_between(recall, precision, step="post", alpha=0.3, color="blue")
     plt.xlabel("Recall")
     plt.ylabel("Precision")
     plt.ylim([0.0, 1.05])
@@ -127,7 +127,7 @@ def plot_precision_recall_curve(precision, recall, average_precision, model_name
 
 def train_logistic_regression():
     steps = [
-        ("Scaler", StandardScaler()),
+        ("scaler", StandardScaler()),
         ("logreg", LogisticRegression())
     ]
 
@@ -147,10 +147,10 @@ def train_logistic_regression():
 
     global logreg_model
     logreg_model = logreg_grid.best_estimator_
-    X_train_scaled = logreg_model.named_steps["Scaler"].transform(X_train)
-    X_test_scaled = logreg_model.named_steps["Scaler"].transform(X_test)
+    X_train_scaled = logreg_model.named_steps["scaler"].transform(X_train)
+    X_test_scaled = logreg_model.named_steps["scaler"].transform(X_test)
     y_pred = logreg_model.predict(X_test_scaled)
-    y_pred_probs = logreg_model.predict_proba(X_test)[:, 1]
+    y_pred_probs = logreg_model.predict_proba(X_test_scaled)[:, 1]
 
     print(f"============= Logistic Regression Model Evaluation =============")
     print(f"Confusion Matrix: \n {confusion_matrix(y_test, y_pred)}")
@@ -168,6 +168,51 @@ def train_logistic_regression():
                                 average_precision=average_precision, model_name="Logistic Regression")
 
 
+def train_knn_classifier():
+    steps = [
+        ("scaler", StandardScaler()),
+        ("knn", KNeighborsClassifier())
+    ]
+    params = {
+        "knn__n_neighbors": list(np.arange(3, 16)),
+        "knn__weights": ["uniform", "distance"],
+        "knn__metric": ["manhattan", "euclidean"]
+    }
+
+    pipeline = Pipeline(steps)
+    kf = KFold(n_splits=10, shuffle=True, random_state=10)
+    knn_grid = GridSearchCV(estimator=pipeline, param_grid=params, cv=kf, scoring="accuracy")
+    knn_grid.fit(X_train, y_train)
+    print(f"Best Parameters: {knn_grid.best_params_}")
+    print(f"Best Cross-Validation Accuracy: {knn_grid.best_score_:.2f}")
+
+    global knn_model
+    knn_model = knn_grid.best_estimator_
+    X_train_scaled = knn_model.named_steps['scaler'].transform(X_train)
+    X_test_scaled = knn_model.named_steps['scaler'].transform(X_test)
+    y_pred = knn_model.predict(X_test_scaled)
+    y_pred_probs = knn_model.predict_proba(X_test_scaled)[:, 1]
+
+    print(f"============= KNeighborsClassifier Model Evaluation =============")
+    print(f"Confusion Matrix: \n {confusion_matrix(y_test, y_pred)}")
+    _ = ConfusionMatrixDisplay.from_estimator(knn_model, X_test_scaled, y_test)
+    plt.savefig(f"knn_classifier_confusion_matrix.png")
+    print(f"Classification Report: \n {classification_report(y_test, y_pred)}")
+    print(f"KNN Precision Score: {precision_score(y_test, y_pred):.2f}")
+    print(f"KNN Recall Score {recall_score(y_test, y_pred):.2f}")
+    print(f"KNN Accuracy Score {accuracy_score(y_test, y_pred):.2f}")
+    print(f"KNN F1 Score {f1_score(y_test, y_pred):.2f}")
+
+    # Generate Plots
+    plot_roc_curve(y_test, y_pred_probs, model_name="Logistic Regression")
+    precision, recall, _ = precision_recall_curve(y_test, y_pred_probs)
+    average_precision = average_precision_score(y_test, y_pred_probs)
+    plot_precision_recall_curve(precision=precision, recall=recall,
+                                average_precision=average_precision, model_name="KNeighborsClassifier")
+
+
+
 if __name__ == "__main__":
     load_and_preprocess_dataset()
-    train_logistic_regression()
+    # train_logistic_regression()
+    train_knn_classifier()
