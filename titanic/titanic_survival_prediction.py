@@ -52,6 +52,7 @@ from sklearn.model_selection import KFold
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.metrics import confusion_matrix, classification_report, ConfusionMatrixDisplay
 from sklearn.metrics import roc_auc_score, roc_curve
+from sklearn.metrics import precision_recall_curve, average_precision_score
 from sklearn.metrics import f1_score, precision_score, recall_score, accuracy_score
 
 X_train, y_train, X_test, y_test = [None] * 4
@@ -107,6 +108,19 @@ def plot_feature_importance(estimator_coefs):
     plt.show()
 
 
+def plot_precision_recall_curve(precision, recall, average_precision):
+    plt.figure(figsize=(8, 6))
+    plt.step(recall, precision, color="darkblue", alpha=0.2, where="post")
+    plt.fill_between(recall, precision, step="post", alpha=0.2, color="blue")
+    plt.xlabel("Recall")
+    plt.ylabel("Precision")
+    plt.ylim([0.0, 1.05])
+    plt.xlim([0.0, 1.0])
+    plt.grid()
+    plt.title(f"Precision-Recall Curve: AP:{average_precision:.2f}")
+    plt.show()
+
+
 def train_logistic_regression():
     steps = [
         ("Scaler", StandardScaler()),
@@ -142,6 +156,10 @@ def train_logistic_regression():
     # Generate Plots
     plot_roc_curve(y_test, y_pred_probs, title="Logistic Regression")
     plot_feature_importance(logreg_model.named_steps["logreg"].coef_[0])
+
+    precision, recall, _ = precision_recall_curve(y_test, y_pred_probs)
+    average_precision = average_precision_score(y_test, y_pred_probs)
+    plot_precision_recall_curve(precision=precision, recall=recall, average_precision=average_precision)
 
 
 if __name__ == "__main__":
