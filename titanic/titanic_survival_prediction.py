@@ -78,7 +78,7 @@ def load_and_preprocess_dataset():
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.22, random_state=10)
 
 
-def plot_roc_curve(y_test, y_pred_probs, title):
+def plot_roc_curve(y_test, y_pred_probs, model_name):
     fpr, tpr, thresholds = roc_curve(y_test, y_pred_probs)
     auc = roc_auc_score(y_test, y_pred_probs)
     print(f"ROC AUC Score: {auc:.2f}")
@@ -91,24 +91,26 @@ def plot_roc_curve(y_test, y_pred_probs, title):
     axs.set_ylim([0.0, 1.05])
     axs.set_xlabel('False Positive Rate (1 - Specificity)')
     axs.set_ylabel('True Positive Rate (Sensitivity)')
-    axs.set_title(f"{title} (ROC) Curve")
+    axs.set_title(f"{model_name} (ROC) Curve")
     axs.legend(loc="lower right")
     plt.grid()
-    file_name = "_".join(title.lower().split(" "))
+    file_name = "_".join(model_name.lower().split(" "))
     plt.savefig(f"{file_name}_roc_curve.png")
     plt.show()
 
 
-def plot_feature_importance(estimator_coefs):
+def plot_feature_importance(estimator_coefs, model_name):
     plt.figure(figsize=(10, 6))
     plt.barh(training_features, estimator_coefs, color="skyblue")
     plt.xlabel(f"Coefficient Magnitude")
     plt.ylabel(f"Feature")
     plt.title(f"Feature Importance")
+    file_name = "_".join(model_name.lower().split(" "))
+    plt.savefig(f"{file_name}_feature_importance_plot.png")
     plt.show()
 
 
-def plot_precision_recall_curve(precision, recall, average_precision):
+def plot_precision_recall_curve(precision, recall, average_precision, model_name):
     plt.figure(figsize=(8, 6))
     plt.step(recall, precision, color="darkblue", alpha=0.2, where="post")
     plt.fill_between(recall, precision, step="post", alpha=0.2, color="blue")
@@ -118,6 +120,8 @@ def plot_precision_recall_curve(precision, recall, average_precision):
     plt.xlim([0.0, 1.0])
     plt.grid()
     plt.title(f"Precision-Recall Curve: AP:{average_precision:.2f}")
+    file_name = "_".join(model_name.lower().split(" "))
+    plt.savefig(f"{file_name}_precision_recall_curve.png")
     plt.show()
 
 
@@ -151,15 +155,17 @@ def train_logistic_regression():
     print(f"============= Logistic Regression Model Evaluation =============")
     print(f"Confusion Matrix: \n {confusion_matrix(y_test, y_pred)}")
     _ = ConfusionMatrixDisplay.from_estimator(logreg_model, X_test_scaled, y_test)
+    plt.savefig(f"logistic_regression_confusion_matrix.png")
     print(f"Classification Report: \n {classification_report(y_test, y_pred)}")
 
     # Generate Plots
-    plot_roc_curve(y_test, y_pred_probs, title="Logistic Regression")
-    plot_feature_importance(logreg_model.named_steps["logreg"].coef_[0])
+    plot_roc_curve(y_test, y_pred_probs, model_name="Logistic Regression")
+    plot_feature_importance(logreg_model.named_steps["logreg"].coef_[0], model_name="Logistic Regression")
 
     precision, recall, _ = precision_recall_curve(y_test, y_pred_probs)
     average_precision = average_precision_score(y_test, y_pred_probs)
-    plot_precision_recall_curve(precision=precision, recall=recall, average_precision=average_precision)
+    plot_precision_recall_curve(precision=precision, recall=recall,
+                                average_precision=average_precision, model_name="Logistic Regression")
 
 
 if __name__ == "__main__":
