@@ -50,12 +50,14 @@ from sklearn.impute import IterativeImputer
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
 from sklearn.model_selection import KFold
 from sklearn.model_selection import train_test_split, cross_val_score
-from sklearn.metrics import confusion_matrix, classification_report
+from sklearn.metrics import confusion_matrix, classification_report, ConfusionMatrixDisplay
 from sklearn.metrics import roc_auc_score, roc_curve
 from sklearn.metrics import f1_score, precision_score, recall_score, accuracy_score
 
 X_train, y_train, X_test, y_test = [None] * 4
 logreg_model = None
+training_features = []
+
 
 def load_and_preprocess_dataset():
     train_dataset = pd.read_csv("train.csv")
@@ -67,9 +69,11 @@ def load_and_preprocess_dataset():
     imputer = IterativeImputer(estimator=RandomForestRegressor(), random_state=10)
     train_dataset_encoded["Age"] = imputer.fit_transform(train_dataset_encoded[["Age"]])
     train_dataset_encoded["Age"] = imputer.fit_transform(train_dataset_encoded[["Age"]])
-    X = train_dataset_encoded.drop(columns="Survived", axis=1).values
+    global X_train, y_train, X_test, y_test, training_features
+    X = train_dataset_encoded.drop(columns="Survived", axis=1)
+    training_features = X.columns
+    X = X.values
     y = train_dataset_encoded["Survived"].values
-    global X_train, y_train, X_test, y_test
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.22, random_state=10)
 
 
@@ -94,31 +98,50 @@ def plot_roc_curve(y_test, y_pred_probs, title):
     plt.show()
 
 
+def plot_feature_importance(estimator_coefs):
+    plt.figure(figsize=(10, 6))
+    plt.barh(training_features, estimator_coefs, color="skyblue")
+    plt.xlabel(f"Coefficient Magnitude")
+    plt.ylabel(f"Feature")
+    plt.title(f"Feature Importance")
+    plt.show()
+
+
 def train_logistic_regression():
     steps = [
         ("Scaler", StandardScaler()),
         ("logreg", LogisticRegression())
     ]
+
     params = {
         "logreg__penalty": ["l1", "l2"],
         "logreg__C": np.linspace(0.001, 0.1, 20),
         "logreg__solver": ["liblinear"]
     }
+
     pipeline = Pipeline(steps)
     kf = KFold(n_splits=10, shuffle=True, random_state=10)
     logreg_grid = GridSearchCV(estimator=pipeline, param_grid=params, cv=kf, scoring="accuracy")
     logreg_grid.fit(X_train, y_train)
+
     print(f"Best Parameters: {logreg_grid.best_params_}")
     print(f"Best Cross-Validation Accuracy: {logreg_grid.best_score_:.2f}")
+
     global logreg_model
     logreg_model = logreg_grid.best_estimator_
-    y_pred = logreg_model.predict(X_test)
+    X_train_scaled = logreg_model.named_steps["Scaler"].transform(X_train)
+    X_test_scaled = logreg_model.named_steps["Scaler"].transform(X_test)
+    y_pred = logreg_model.predict(X_test_scaled)
     y_pred_probs = logreg_model.predict_proba(X_test)[:, 1]
+
     print(f"============= Logistic Regression Model Evaluation =============")
     print(f"Confusion Matrix: \n {confusion_matrix(y_test, y_pred)}")
+    _ = ConfusionMatrixDisplay.from_estimator(logreg_model, X_test_scaled, y_test)
     print(f"Classification Report: \n {classification_report(y_test, y_pred)}")
+
+    # Generate Plots
     plot_roc_curve(y_test, y_pred_probs, title="Logistic Regression")
-    print(logreg_grid.cv_results_)
+    plot_feature_importance(logreg_model.named_steps["logreg"].coef_[0])
 
 
 if __name__ == "__main__":
