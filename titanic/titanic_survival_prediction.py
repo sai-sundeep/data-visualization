@@ -42,6 +42,7 @@ import matplotlib.pyplot as plt
 from sklearn.linear_model import LogisticRegression
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import BaggingClassifier
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
@@ -268,10 +269,26 @@ def train_decsion_tree_classifier():
                                 average_precision=average_precision, model_name="Decision Tree Classfier")
 
 
+def train_dt_bagging_classifier():
+    dt_clf = DecisionTreeClassifier(min_samples_leaf=1, max_depth=8, random_state=10)
+    bc = BaggingClassifier(estimator=dt_clf, n_estimators=300, n_jobs=-1)
+    bc.fit(X_train, y_train)
+    y_pred = bc.predict(X_test)
+
+    print(f"============= Bagging Classifier Evaluation =============")
+    print(f"Confusion Matrix: \n {confusion_matrix(y_test, y_pred)}")
+    _ = ConfusionMatrixDisplay.from_estimator(bc, X_test, y_test)
+    plt.savefig(f"bagging_classifier_confusion_matrix.png")
+    print(f"Classification Report: \n {classification_report(y_test, y_pred)}")
+    print(f"Decision Tree Precision Score: {precision_score(y_test, y_pred):.2f}")
+    print(f"Decision Tree Recall Score {recall_score(y_test, y_pred):.2f}")
+    print(f"Decision Tree Accuracy Score {accuracy_score(y_test, y_pred):.2f}")
+    print(f"Decision Tree F1 Score {f1_score(y_test, y_pred):.2f}")
 
 
 if __name__ == "__main__":
     load_and_preprocess_dataset()
     # train_logistic_regression()
     # train_knn_classifier()
-    train_decsion_tree_classifier()
+    # train_decsion_tree_classifier()
+    train_dt_bagging_classifier()
