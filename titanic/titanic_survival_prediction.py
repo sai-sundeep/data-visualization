@@ -56,7 +56,7 @@ from sklearn.metrics import precision_recall_curve, average_precision_score
 from sklearn.metrics import f1_score, precision_score, recall_score, accuracy_score
 
 X_train, y_train, X_test, y_test = [None] * 4
-logreg_model, knn_model = [None] * 2
+logreg_model, knn_model, dt_clf = [None] * 3
 training_features = []
 
 
@@ -75,7 +75,7 @@ def load_and_preprocess_dataset():
     training_features = X.columns
     X = X.values
     y = train_dataset_encoded["Survived"].values
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.22, random_state=10)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.22, random_state=10, stratify=y)
 
 
 def plot_roc_curve(y_test, y_pred_probs, model_name):
@@ -211,8 +211,67 @@ def train_knn_classifier():
                                 average_precision=average_precision, model_name="KNeighborsClassifier")
 
 
+def unconstrained_dt_classifier():
+    dt_clf = DecisionTreeClassifier(random_state=10)
+    dt_clf.fit(X_train, y_train)
+    y_pred = dt_clf.predict(X_test)
+
+    print(f"============= Decision Tree Classifier Evaluation (Un-constrained) =============")
+    print(f"Confusion Matrix: \n {confusion_matrix(y_test, y_pred)}")
+    _ = ConfusionMatrixDisplay.from_estimator(dt_clf, X_test, y_test)
+    plt.savefig(f"decision_tree_classifier_confusion_matrix.png")
+    print(f"Classification Report: \n {classification_report(y_test, y_pred)}")
+    print(f"Decision Tree Precision Score: {precision_score(y_test, y_pred):.2f}")
+    print(f"Decision Tree Recall Score {recall_score(y_test, y_pred):.2f}")
+    print(f"Decision Tree Accuracy Score {accuracy_score(y_test, y_pred):.2f}")
+    print(f"Decision Tree F1 Score {f1_score(y_test, y_pred):.2f}")
+
+
+def train_decsion_tree_classifier():
+    unconstrained_dt_classifier()
+    params = {
+        "criterion": ["gini", "log_loss", "entropy"],
+        "max_features": [5, 7, 10, "log2", "sqrt", None],
+        "max_depth": [3, 4, 5, 6, 7, None],
+        "min_samples_leaf": np.linspace(0.001, 0.0001, 10)
+    }
+    kf = KFold(n_splits=7, shuffle=True, random_state=10)
+    dt_clf_grid = GridSearchCV(estimator=DecisionTreeClassifier(random_state=10),
+                                     param_grid=params,
+                                     cv=kf, scoring="accuracy",
+                                     # random_state=10
+                               )
+    dt_clf_grid.fit(X_train, y_train)
+    print(f"Best Parameters: {dt_clf_grid.best_params_}")
+    print(f"Best Cross-Validation Accuracy: {dt_clf_grid.best_score_:.2f}")
+
+    global dt_clf
+    dt_clf = dt_clf_grid.best_estimator_
+    y_pred = dt_clf.predict(X_test)
+    y_pred_probs = dt_clf.predict_proba(X_test)[:, 1]
+
+    print(f"============= Decision Tree Classifier Evaluation =============")
+    print(f"Confusion Matrix: \n {confusion_matrix(y_test, y_pred)}")
+    _ = ConfusionMatrixDisplay.from_estimator(dt_clf, X_test, y_test)
+    plt.savefig(f"decision_tree_classifier_confusion_matrix.png")
+    print(f"Classification Report: \n {classification_report(y_test, y_pred)}")
+    print(f"Decision Tree Precision Score: {precision_score(y_test, y_pred):.2f}")
+    print(f"Decision Tree Recall Score {recall_score(y_test, y_pred):.2f}")
+    print(f"Decision Tree Accuracy Score {accuracy_score(y_test, y_pred):.2f}")
+    print(f"Decision Tree F1 Score {f1_score(y_test, y_pred):.2f}")
+
+    # Generate Plots
+    plot_roc_curve(y_test, y_pred_probs, model_name="Logistic Regression")
+    precision, recall, _ = precision_recall_curve(y_test, y_pred_probs)
+    average_precision = average_precision_score(y_test, y_pred_probs)
+    plot_precision_recall_curve(precision=precision, recall=recall,
+                                average_precision=average_precision, model_name="Decision Tree Classfier")
+
+
+
 
 if __name__ == "__main__":
     load_and_preprocess_dataset()
     # train_logistic_regression()
-    train_knn_classifier()
+    # train_knn_classifier()
+    train_decsion_tree_classifier()
