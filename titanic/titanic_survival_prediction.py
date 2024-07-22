@@ -49,7 +49,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.experimental import enable_iterative_imputer
 from sklearn.impute import IterativeImputer
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
-from sklearn.model_selection import KFold
+from sklearn.model_selection import StratifiedKFold, KFold
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.metrics import confusion_matrix, classification_report, ConfusionMatrixDisplay
 from sklearn.metrics import roc_auc_score, roc_curve
@@ -162,12 +162,15 @@ def train_logistic_regression():
     }
 
     pipeline = Pipeline(steps)
-    kf = KFold(n_splits=10, shuffle=True, random_state=10)
+    kf = StratifiedKFold(n_splits=10, shuffle=True, random_state=10)
     logreg_grid = GridSearchCV(estimator=pipeline, param_grid=params, cv=kf, scoring="accuracy")
     logreg_grid.fit(X_train, y_train)
 
     print(f"Best Parameters: {logreg_grid.best_params_}")
-    print(f"Best Cross-Validation Accuracy: {logreg_grid.best_score_:.2f}")
+    print(f"Cross-Validation Score: {logreg_grid.best_score_:.2f}")
+    # cv_results = pd.DataFrame(logreg_grid.cv_results_)
+    # print(cv_results.head())
+    # print(cv_results.columns)
 
     global logreg_model
     logreg_model = logreg_grid.best_estimator_
@@ -175,7 +178,11 @@ def train_logistic_regression():
     X_test_scaled = logreg_model.named_steps["scaler"].transform(X_test)
     y_pred = logreg_model.predict(X_test_scaled)
     y_pred_probs = logreg_model.predict_proba(X_test_scaled)[:, 1]
-
+    train_set_error = 1 - logreg_model.score(X_train, y_train)
+    test_set_error = 1 - logreg_model.score(X_test, y_test)
+    print(f"Training Set Error: {train_set_error:.2f}")
+    print(f"Test Set Error: {test_set_error:.2f}")
+    print(f"Cross-Validation Error: {1 - logreg_grid.best_score_:.2f}")
     generate_classification_metrics(estimator=logreg_model, model_name="Logistic Regression",
                                     y_pred=y_pred, y_pred_probs=y_pred_probs, X_test_scaled=X_test_scaled)
 
@@ -192,7 +199,7 @@ def train_knn_classifier():
     }
 
     pipeline = Pipeline(steps)
-    kf = KFold(n_splits=10, shuffle=True, random_state=10)
+    kf = StratifiedKFold(n_splits=10, shuffle=True, random_state=10)
     knn_grid = GridSearchCV(estimator=pipeline, param_grid=params, cv=kf, scoring="accuracy")
     knn_grid.fit(X_train, y_train)
     print(f"Best Parameters: {knn_grid.best_params_}")
@@ -234,7 +241,7 @@ def train_decsion_tree_classifier():
         "max_depth": [3, 4, 5, 6, 7, None],
         "min_samples_leaf": np.linspace(0.001, 0.0001, 10)
     }
-    kf = KFold(n_splits=7, shuffle=True, random_state=10)
+    kf = StratifiedKFold(n_splits=7, shuffle=True, random_state=10)
     dt_clf_grid = GridSearchCV(estimator=DecisionTreeClassifier(random_state=10),
                                      param_grid=params,
                                      cv=kf, scoring="accuracy",
@@ -248,6 +255,11 @@ def train_decsion_tree_classifier():
     dt_clf = dt_clf_grid.best_estimator_
     y_pred = dt_clf.predict(X_test)
     y_pred_probs = dt_clf.predict_proba(X_test)[:, 1]
+    train_set_error = 1 - dt_clf.score(X_train, y_train)
+    test_set_error = 1 - dt_clf.score(X_test, y_test)
+    print(f"Training Set Error: {train_set_error:.2f}")
+    print(f"Test Set Error: {test_set_error:.2f}")
+    print(f"Cross-Validation Error: {1 - dt_clf_grid.best_score_:.2f}")
 
     generate_classification_metrics(estimator=dt_clf, model_name="Decision Tree",
                                     y_pred=y_pred, y_pred_probs=y_pred_probs, X_test_scaled=X_test)
@@ -259,6 +271,10 @@ def train_dt_bagging_classifier():
     bc.fit(X_train, y_train)
     y_pred = bc.predict(X_test)
     y_pred_probs = bc.predict_proba(X_test)[:, 1]
+    train_set_error = 1 - bc.score(X_train, y_train)
+    test_set_error = 1 - bc.score(X_test, y_test)
+    print(f"Training Set Error: {train_set_error:.2f}")
+    print(f"Test Set Error: {test_set_error:.2f}")
 
     generate_classification_metrics(estimator=bc, model_name="Bagging With Decision Tree",
                                     y_pred=y_pred, y_pred_probs=y_pred_probs, X_test_scaled=X_test)
@@ -266,7 +282,7 @@ def train_dt_bagging_classifier():
 
 if __name__ == "__main__":
     load_and_preprocess_dataset()
-    train_logistic_regression()
-    train_knn_classifier()
-    train_decsion_tree_classifier()
+    # train_logistic_regression()
+    # train_knn_classifier()
+    # train_decsion_tree_classifier()
     train_dt_bagging_classifier()
