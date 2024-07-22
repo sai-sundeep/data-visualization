@@ -126,6 +126,29 @@ def plot_precision_recall_curve(precision, recall, average_precision, model_name
     plt.show()
 
 
+def generate_classification_metrics(estimator, model_name, y_pred, y_pred_probs, X_test_scaled):
+    print(f"============= {model_name} Model Evaluation =============")
+    file_name = "_".join(model_name.lower().split(" "))
+    print(f"Confusion Matrix: \n {confusion_matrix(y_test, y_pred)}")
+    _ = ConfusionMatrixDisplay.from_estimator(estimator, X_test_scaled, y_test)
+    plt.savefig(f"{file_name}_classifier_confusion_matrix.png")
+    print(f"Classification Report: \n {classification_report(y_test, y_pred)}")
+    print(f"{model_name} Precision Score: {precision_score(y_test, y_pred):.2f}")
+    print(f"{model_name} Recall Score {recall_score(y_test, y_pred):.2f}")
+    print(f"{model_name} Accuracy Score {accuracy_score(y_test, y_pred):.2f}")
+    print(f"{model_name} F1 Score {f1_score(y_test, y_pred):.2f}")
+
+    # Generate Plots
+    plot_roc_curve(y_test, y_pred_probs, model_name=model_name)
+    precision, recall, _ = precision_recall_curve(y_test, y_pred_probs)
+    average_precision = average_precision_score(y_test, y_pred_probs)
+    plot_precision_recall_curve(precision=precision,
+                                recall=recall,
+                                average_precision=average_precision,
+                                model_name=model_name)
+    print("=" * 80)
+
+
 def train_logistic_regression():
     steps = [
         ("scaler", StandardScaler()),
@@ -153,20 +176,8 @@ def train_logistic_regression():
     y_pred = logreg_model.predict(X_test_scaled)
     y_pred_probs = logreg_model.predict_proba(X_test_scaled)[:, 1]
 
-    print(f"============= Logistic Regression Model Evaluation =============")
-    print(f"Confusion Matrix: \n {confusion_matrix(y_test, y_pred)}")
-    _ = ConfusionMatrixDisplay.from_estimator(logreg_model, X_test_scaled, y_test)
-    plt.savefig(f"logistic_regression_confusion_matrix.png")
-    print(f"Classification Report: \n {classification_report(y_test, y_pred)}")
-
-    # Generate Plots
-    plot_roc_curve(y_test, y_pred_probs, model_name="Logistic Regression")
-    plot_feature_importance(logreg_model.named_steps["logreg"].coef_[0], model_name="Logistic Regression")
-
-    precision, recall, _ = precision_recall_curve(y_test, y_pred_probs)
-    average_precision = average_precision_score(y_test, y_pred_probs)
-    plot_precision_recall_curve(precision=precision, recall=recall,
-                                average_precision=average_precision, model_name="Logistic Regression")
+    generate_classification_metrics(estimator=logreg_model, model_name="Logistic Regression",
+                                    y_pred=y_pred, y_pred_probs=y_pred_probs, X_test_scaled=X_test_scaled)
 
 
 def train_knn_classifier():
@@ -194,22 +205,8 @@ def train_knn_classifier():
     y_pred = knn_model.predict(X_test_scaled)
     y_pred_probs = knn_model.predict_proba(X_test_scaled)[:, 1]
 
-    print(f"============= KNeighborsClassifier Model Evaluation =============")
-    print(f"Confusion Matrix: \n {confusion_matrix(y_test, y_pred)}")
-    _ = ConfusionMatrixDisplay.from_estimator(knn_model, X_test_scaled, y_test)
-    plt.savefig(f"knn_classifier_confusion_matrix.png")
-    print(f"Classification Report: \n {classification_report(y_test, y_pred)}")
-    print(f"KNN Precision Score: {precision_score(y_test, y_pred):.2f}")
-    print(f"KNN Recall Score {recall_score(y_test, y_pred):.2f}")
-    print(f"KNN Accuracy Score {accuracy_score(y_test, y_pred):.2f}")
-    print(f"KNN F1 Score {f1_score(y_test, y_pred):.2f}")
-
-    # Generate Plots
-    plot_roc_curve(y_test, y_pred_probs, model_name="Logistic Regression")
-    precision, recall, _ = precision_recall_curve(y_test, y_pred_probs)
-    average_precision = average_precision_score(y_test, y_pred_probs)
-    plot_precision_recall_curve(precision=precision, recall=recall,
-                                average_precision=average_precision, model_name="KNeighborsClassifier")
+    generate_classification_metrics(estimator=knn_model, model_name="KNeighborsClassifier",
+                                    y_pred=y_pred, y_pred_probs=y_pred_probs, X_test_scaled=X_test_scaled)
 
 
 def unconstrained_dt_classifier():
@@ -226,6 +223,7 @@ def unconstrained_dt_classifier():
     print(f"Decision Tree Recall Score {recall_score(y_test, y_pred):.2f}")
     print(f"Decision Tree Accuracy Score {accuracy_score(y_test, y_pred):.2f}")
     print(f"Decision Tree F1 Score {f1_score(y_test, y_pred):.2f}")
+    print(f"=" * 80)
 
 
 def train_decsion_tree_classifier():
@@ -251,22 +249,8 @@ def train_decsion_tree_classifier():
     y_pred = dt_clf.predict(X_test)
     y_pred_probs = dt_clf.predict_proba(X_test)[:, 1]
 
-    print(f"============= Decision Tree Classifier Evaluation =============")
-    print(f"Confusion Matrix: \n {confusion_matrix(y_test, y_pred)}")
-    _ = ConfusionMatrixDisplay.from_estimator(dt_clf, X_test, y_test)
-    plt.savefig(f"decision_tree_classifier_confusion_matrix.png")
-    print(f"Classification Report: \n {classification_report(y_test, y_pred)}")
-    print(f"Decision Tree Precision Score: {precision_score(y_test, y_pred):.2f}")
-    print(f"Decision Tree Recall Score {recall_score(y_test, y_pred):.2f}")
-    print(f"Decision Tree Accuracy Score {accuracy_score(y_test, y_pred):.2f}")
-    print(f"Decision Tree F1 Score {f1_score(y_test, y_pred):.2f}")
-
-    # Generate Plots
-    plot_roc_curve(y_test, y_pred_probs, model_name="Logistic Regression")
-    precision, recall, _ = precision_recall_curve(y_test, y_pred_probs)
-    average_precision = average_precision_score(y_test, y_pred_probs)
-    plot_precision_recall_curve(precision=precision, recall=recall,
-                                average_precision=average_precision, model_name="Decision Tree Classfier")
+    generate_classification_metrics(estimator=dt_clf, model_name="Decision Tree",
+                                    y_pred=y_pred, y_pred_probs=y_pred_probs, X_test_scaled=X_test)
 
 
 def train_dt_bagging_classifier():
@@ -274,21 +258,15 @@ def train_dt_bagging_classifier():
     bc = BaggingClassifier(estimator=dt_clf, n_estimators=300, n_jobs=-1)
     bc.fit(X_train, y_train)
     y_pred = bc.predict(X_test)
+    y_pred_probs = bc.predict_proba(X_test)[:, 1]
 
-    print(f"============= Bagging Classifier Evaluation =============")
-    print(f"Confusion Matrix: \n {confusion_matrix(y_test, y_pred)}")
-    _ = ConfusionMatrixDisplay.from_estimator(bc, X_test, y_test)
-    plt.savefig(f"bagging_classifier_confusion_matrix.png")
-    print(f"Classification Report: \n {classification_report(y_test, y_pred)}")
-    print(f"Decision Tree Precision Score: {precision_score(y_test, y_pred):.2f}")
-    print(f"Decision Tree Recall Score {recall_score(y_test, y_pred):.2f}")
-    print(f"Decision Tree Accuracy Score {accuracy_score(y_test, y_pred):.2f}")
-    print(f"Decision Tree F1 Score {f1_score(y_test, y_pred):.2f}")
+    generate_classification_metrics(estimator=bc, model_name="Bagging With Decision Tree",
+                                    y_pred=y_pred, y_pred_probs=y_pred_probs, X_test_scaled=X_test)
 
 
 if __name__ == "__main__":
     load_and_preprocess_dataset()
-    # train_logistic_regression()
-    # train_knn_classifier()
-    # train_decsion_tree_classifier()
+    train_logistic_regression()
+    train_knn_classifier()
+    train_decsion_tree_classifier()
     train_dt_bagging_classifier()
