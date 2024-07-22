@@ -303,7 +303,7 @@ def train_random_forest_classifier():
         "min_samples_leaf": np.arange(1, 15, 2)
     }
     kf = StratifiedKFold(n_splits=10, random_state=10, shuffle=True)
-    rf = RandomForestClassifier(random_state=10, min_samples_leaf=3)
+    rf = RandomForestClassifier(random_state=10, min_samples_leaf=3, oob_score=True)
     rf_grid = RandomizedSearchCV(estimator=rf,
                                  param_distributions=params, cv=kf,
                                  scoring="accuracy", n_jobs=-1,
@@ -319,6 +319,7 @@ def train_random_forest_classifier():
     test_set_accuracy = rf_clf.score(X_test, y_test)
     print(f"Training Set Accuracy: {train_set_accuracy:.2f}")
     print(f"Test Set Accuracy: {test_set_accuracy:.2f}")
+    print(f"OOB Score: {test_set_accuracy:.2f}")
 
     generate_classification_metrics(estimator=rf_clf, model_name="Random Forest",
                                     y_pred=y_pred, y_pred_probs=y_pred_probs, X_test_scaled=X_test)
