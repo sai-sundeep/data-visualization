@@ -96,7 +96,7 @@ def plot_roc_curve(y_test, y_pred_probs, model_name):
     axs.legend(loc="lower right")
     plt.grid()
     file_name = "_".join(model_name.lower().split(" "))
-    plt.savefig(f"{file_name}_roc_curve.png")
+    plt.savefig(f"results_and_plots/{file_name}_roc_curve.png")
     plt.show()
 
 
@@ -107,7 +107,7 @@ def plot_feature_importance(estimator_coefs, model_name):
     plt.ylabel(f"Feature")
     plt.title(f"Feature Importance")
     file_name = "_".join(model_name.lower().split(" "))
-    plt.savefig(f"{file_name}_feature_importance_plot.png")
+    plt.savefig(f"results_and_plots/{file_name}_feature_importance_plot.png")
     plt.show()
 
 
@@ -122,7 +122,7 @@ def plot_precision_recall_curve(precision, recall, average_precision, model_name
     plt.grid()
     plt.title(f"Precision-Recall Curve: AP:{average_precision:.2f}")
     file_name = "_".join(model_name.lower().split(" "))
-    plt.savefig(f"{file_name}_precision_recall_curve.png")
+    plt.savefig(f"results_and_plots/{file_name}_precision_recall_curve.png")
     plt.show()
 
 
@@ -131,7 +131,7 @@ def generate_classification_metrics(estimator, model_name, y_pred, y_pred_probs,
     file_name = "_".join(model_name.lower().split(" "))
     print(f"Confusion Matrix: \n {confusion_matrix(y_test, y_pred)}")
     _ = ConfusionMatrixDisplay.from_estimator(estimator, X_test_scaled, y_test)
-    plt.savefig(f"{file_name}_classifier_confusion_matrix.png")
+    plt.savefig(f"results_and_plots/{file_name}_classifier_confusion_matrix.png")
     print(f"Classification Report: \n {classification_report(y_test, y_pred)}")
     print(f"{model_name} Precision Score: {precision_score(y_test, y_pred):.2f}")
     print(f"{model_name} Recall Score {recall_score(y_test, y_pred):.2f}")
