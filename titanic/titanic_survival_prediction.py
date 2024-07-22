@@ -280,9 +280,26 @@ def train_dt_bagging_classifier():
                                     y_pred=y_pred, y_pred_probs=y_pred_probs, X_test_scaled=X_test)
 
 
+def train_dt_bagging_oob_eval_classifier():
+    dt_clf = DecisionTreeClassifier(min_samples_leaf=1, max_depth=8, random_state=10)
+    bc = BaggingClassifier(estimator=dt_clf, n_estimators=300, n_jobs=-1, oob_score=True)
+    bc.fit(X_train, y_train)
+    y_pred = bc.predict(X_test)
+    y_pred_probs = bc.predict_proba(X_test)[:, 1]
+    train_set_accuracy = bc.score(X_train, y_train)
+    test_set_accuracy = bc.score(X_test, y_test)
+    print(f"Training Set Accuracy: {train_set_accuracy:.2f}")
+    print(f"Test Set Accuracy: {test_set_accuracy:.2f}")
+    print(f"Out-Of-Bag (OOB) Accuracy: {bc.oob_score_:.2f}")
+
+    generate_classification_metrics(estimator=bc, model_name="OOB Bagging",
+                                    y_pred=y_pred, y_pred_probs=y_pred_probs, X_test_scaled=X_test)
+
+
 if __name__ == "__main__":
     load_and_preprocess_dataset()
     # train_logistic_regression()
     # train_knn_classifier()
     # train_decsion_tree_classifier()
-    train_dt_bagging_classifier()
+    # train_dt_bagging_classifier()
+    train_dt_bagging_oob_eval_classifier()
