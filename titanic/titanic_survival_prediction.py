@@ -296,10 +296,39 @@ def train_dt_bagging_oob_eval_classifier():
                                     y_pred=y_pred, y_pred_probs=y_pred_probs, X_test_scaled=X_test)
 
 
+def train_random_forest_classifier():
+    params = {
+        "n_estimators": np.arange(100, 250, 10),
+        "min_samples_split": np.arange(2, 22, 4),
+        "min_samples_leaf": np.arange(1, 15, 2)
+    }
+    kf = StratifiedKFold(n_splits=10, random_state=10, shuffle=True)
+    rf = RandomForestClassifier(random_state=10, min_samples_leaf=3)
+    rf_grid = RandomizedSearchCV(estimator=rf,
+                                 param_distributions=params, cv=kf,
+                                 scoring="accuracy", n_jobs=-1,
+                                 random_state=10)
+    rf_grid.fit(X_train, y_train)
+    print(f"Best Parameters: {rf_grid.best_params_}")
+    print(f"Best Cross-Validation Accuracy: {rf_grid.best_score_:.2f}")
+    rf_clf = rf_grid.best_estimator_
+    y_pred = rf_clf.predict(X_test)
+    y_pred_probs = rf_clf.predict_proba(X_test)[:, 1]
+
+    train_set_accuracy = rf_clf.score(X_train, y_train)
+    test_set_accuracy = rf_clf.score(X_test, y_test)
+    print(f"Training Set Accuracy: {train_set_accuracy:.2f}")
+    print(f"Test Set Accuracy: {test_set_accuracy:.2f}")
+
+    generate_classification_metrics(estimator=rf_clf, model_name="Random Forest",
+                                    y_pred=y_pred, y_pred_probs=y_pred_probs, X_test_scaled=X_test)
+
+
 if __name__ == "__main__":
     load_and_preprocess_dataset()
     # train_logistic_regression()
     # train_knn_classifier()
     # train_decsion_tree_classifier()
     # train_dt_bagging_classifier()
-    train_dt_bagging_oob_eval_classifier()
+    # train_dt_bagging_oob_eval_classifier()
+    train_random_forest_classifier()
