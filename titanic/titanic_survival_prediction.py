@@ -42,7 +42,7 @@ import matplotlib.pyplot as plt
 from sklearn.linear_model import LogisticRegression
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble import BaggingClassifier
+from sklearn.ensemble import BaggingClassifier, AdaBoostClassifier, GradientBoostingClassifier
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
@@ -234,7 +234,7 @@ def unconstrained_dt_classifier():
 
 
 def train_decsion_tree_classifier():
-    unconstrained_dt_classifier()
+    # unconstrained_dt_classifier()
     params = {
         "criterion": ["gini", "log_loss", "entropy"],
         "max_features": [5, 7, 10, "log2", "sqrt", None],
@@ -242,10 +242,10 @@ def train_decsion_tree_classifier():
         "min_samples_leaf": np.linspace(0.001, 0.0001, 10)
     }
     kf = StratifiedKFold(n_splits=7, shuffle=True, random_state=10)
-    dt_clf_grid = GridSearchCV(estimator=DecisionTreeClassifier(random_state=10),
-                                     param_grid=params,
+    dt_clf_grid = RandomizedSearchCV(estimator=DecisionTreeClassifier(random_state=10),
+                                     param_distributions=params,
                                      cv=kf, scoring="accuracy",
-                                     # random_state=10
+                                     random_state=10
                                )
     dt_clf_grid.fit(X_train, y_train)
     print(f"Best Parameters: {dt_clf_grid.best_params_}")
@@ -319,9 +319,31 @@ def train_random_forest_classifier():
     test_set_accuracy = rf_clf.score(X_test, y_test)
     print(f"Training Set Accuracy: {train_set_accuracy:.2f}")
     print(f"Test Set Accuracy: {test_set_accuracy:.2f}")
-    print(f"OOB Score: {test_set_accuracy:.2f}")
+    print(f"OOB Score: {rf.oob_score_:.2f}")
 
     generate_classification_metrics(estimator=rf_clf, model_name="Random Forest",
+                                    y_pred=y_pred, y_pred_probs=y_pred_probs, X_test_scaled=X_test)
+
+
+def train_adaboost_classifier():
+    weak_classifier = DecisionTreeClassifier(max_depth=10, criterion='log_loss')
+    adaboost_clf = AdaBoostClassifier(
+        estimator=weak_classifier,
+        n_estimators=450,
+        algorithm="SAMME",
+        random_state=10,
+        learning_rate=0.1
+    )
+    adaboost_clf.fit(X_train, y_train)
+    y_pred = adaboost_clf.predict(X_test)
+    y_pred_probs = adaboost_clf.predict_proba(X_test)[:, 1]
+
+    train_set_accuracy = adaboost_clf.score(X_train, y_train)
+    test_set_accuracy = adaboost_clf.score(X_test, y_test)
+    print(f"Training Set Accuracy: {train_set_accuracy:.2f}")
+    print(f"Test Set Accuracy: {test_set_accuracy:.2f}")
+
+    generate_classification_metrics(estimator=adaboost_clf, model_name="Adaboost",
                                     y_pred=y_pred, y_pred_probs=y_pred_probs, X_test_scaled=X_test)
 
 
@@ -332,4 +354,5 @@ if __name__ == "__main__":
     # train_decsion_tree_classifier()
     # train_dt_bagging_classifier()
     # train_dt_bagging_oob_eval_classifier()
-    train_random_forest_classifier()
+    # train_random_forest_classifier()
+    train_adaboost_classifier()
