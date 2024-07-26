@@ -347,6 +347,25 @@ def train_adaboost_classifier():
                                     y_pred=y_pred, y_pred_probs=y_pred_probs, X_test_scaled=X_test)
 
 
+def train_gradientboost_classifier():
+    gradboost_clf = GradientBoostingClassifier(
+        n_estimators=250,
+        random_state=10,
+        learning_rate=0.125,
+    )
+    gradboost_clf.fit(X_train, y_train)
+    y_pred = gradboost_clf.predict(X_test)
+    y_pred_probs = gradboost_clf.predict_proba(X_test)[:, 1]
+
+    train_set_accuracy = gradboost_clf.score(X_train, y_train)
+    test_set_accuracy = gradboost_clf.score(X_test, y_test)
+    print(f"Training Set Accuracy: {train_set_accuracy:.2f}")
+    print(f"Test Set Accuracy: {test_set_accuracy:.2f}")
+
+    generate_classification_metrics(estimator=gradboost_clf, model_name="Gradient Boosting",
+                                    y_pred=y_pred, y_pred_probs=y_pred_probs, X_test_scaled=X_test)
+
+
 if __name__ == "__main__":
     load_and_preprocess_dataset()
     # train_logistic_regression()
@@ -355,4 +374,5 @@ if __name__ == "__main__":
     # train_dt_bagging_classifier()
     # train_dt_bagging_oob_eval_classifier()
     # train_random_forest_classifier()
-    train_adaboost_classifier()
+    # train_adaboost_classifier()
+    train_gradientboost_classifier()
