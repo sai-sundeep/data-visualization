@@ -59,24 +59,32 @@ from sklearn.metrics import f1_score, precision_score, recall_score, accuracy_sc
 X_train, y_train, X_test, y_test = [None] * 4
 logreg_model, knn_model, dt_clf = [None] * 3
 training_features = []
+best_accuracy_scoring_model = 0
+best_model_name = None
+test_dataset_final = None
+passenger_ids = None
 
 
 def load_and_preprocess_dataset():
+    global test_dataset_final, passenger_ids
     train_dataset = pd.read_csv("train.csv")
     test_dataset = pd.read_csv(f"test.csv")
     train_dataset_encoded = pd.get_dummies(data=train_dataset, columns=["Sex", "Pclass", "Embarked"], dtype=int)
     test_dataset_encoded = pd.get_dummies(data=test_dataset, columns=["Sex", "Pclass", "Embarked"], dtype=int)
+    passenger_ids = test_dataset_encoded["PassengerId"].values
     train_dataset_encoded.drop(columns=["PassengerId", "Ticket", "Name", "Cabin"], axis=1, inplace=True)
     test_dataset_encoded.drop(columns=["PassengerId", "Ticket", "Name", "Cabin"], axis=1, inplace=True)
     imputer = IterativeImputer(estimator=RandomForestRegressor(), random_state=10)
     train_dataset_encoded["Age"] = imputer.fit_transform(train_dataset_encoded[["Age"]])
-    train_dataset_encoded["Age"] = imputer.fit_transform(train_dataset_encoded[["Age"]])
+    test_dataset_encoded["Age"] = imputer.fit_transform(test_dataset_encoded[["Age"]])
+    test_dataset_encoded["Fare"] = imputer.fit_transform(test_dataset_encoded[["Fare"]])
+    test_dataset_final = test_dataset_encoded
     global X_train, y_train, X_test, y_test, training_features
     X = train_dataset_encoded.drop(columns="Survived", axis=1)
     training_features = X.columns
     X = X.values
     y = train_dataset_encoded["Survived"].values
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.22, random_state=10, stratify=y)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=10, stratify=y)
 
 
 def plot_roc_curve(y_test, y_pred_probs, model_name):
@@ -149,6 +157,13 @@ def generate_classification_metrics(estimator, model_name, y_pred, y_pred_probs,
     print("=" * 80)
 
 
+def set_best_model(curr_test_set_acc, model_name):
+    global best_accuracy_scoring_model, best_model_name
+    if curr_test_set_acc > best_accuracy_scoring_model:
+        best_accuracy_scoring_model = curr_test_set_acc
+        best_model_name = model_name
+
+
 def train_logistic_regression():
     steps = [
         ("scaler", StandardScaler()),
@@ -178,13 +193,17 @@ def train_logistic_regression():
     X_test_scaled = logreg_model.named_steps["scaler"].transform(X_test)
     y_pred = logreg_model.predict(X_test_scaled)
     y_pred_probs = logreg_model.predict_proba(X_test_scaled)[:, 1]
-    train_set_error = 1 - logreg_model.score(X_train, y_train)
-    test_set_error = 1 - logreg_model.score(X_test, y_test)
-    print(f"Training Set Error: {train_set_error:.2f}")
-    print(f"Test Set Error: {test_set_error:.2f}")
+    train_set_acc = logreg_model.score(X_train, y_train)
+    test_set_acc = logreg_model.score(X_test, y_test)
+    print(f"Training Set accuracy: {train_set_acc:.2f}")
+    print(f"Test Set accuracy: {test_set_acc:.2f}")
     print(f"Cross-Validation Error: {1 - logreg_grid.best_score_:.2f}")
-    generate_classification_metrics(estimator=logreg_model, model_name="Logistic Regression",
-                                    y_pred=y_pred, y_pred_probs=y_pred_probs, X_test_scaled=X_test_scaled)
+
+    curr_test_set_acc = accuracy_score(y_test, y_pred)
+    set_best_model(curr_test_set_acc, "logistic regression")
+
+    # generate_classification_metrics(estimator=logreg_model, model_name="Logistic Regression",
+    #                                 y_pred=y_pred, y_pred_probs=y_pred_probs, X_test_scaled=X_test_scaled)
 
 
 def train_knn_classifier():
@@ -212,14 +231,30 @@ def train_knn_classifier():
     y_pred = knn_model.predict(X_test_scaled)
     y_pred_probs = knn_model.predict_proba(X_test_scaled)[:, 1]
 
-    generate_classification_metrics(estimator=knn_model, model_name="KNeighborsClassifier",
-                                    y_pred=y_pred, y_pred_probs=y_pred_probs, X_test_scaled=X_test_scaled)
+    train_set_acc = knn_model.score(X_train, y_train)
+    test_set_acc = knn_model.score(X_test, y_test)
+    print(f"Training Set accuracy: {train_set_acc:.2f}")
+    print(f"Test Set accuracy: {test_set_acc:.2f}")
+
+    curr_test_set_acc = accuracy_score(y_test, y_pred)
+    global best_accuracy_scoring_model
+    if curr_test_set_acc > best_accuracy_scoring_model:
+        best_accuracy_scoring_model = curr_test_set_acc
+
+    curr_test_set_acc = accuracy_score(y_test, y_pred)
+    set_best_model(curr_test_set_acc, "knn classifier")
+
+    # generate_classification_metrics(estimator=knn_model, model_name="KNeighborsClassifier",
+    #                                 y_pred=y_pred, y_pred_probs=y_pred_probs, X_test_scaled=X_test_scaled)
 
 
 def unconstrained_dt_classifier():
     dt_clf = DecisionTreeClassifier(random_state=10)
     dt_clf.fit(X_train, y_train)
     y_pred = dt_clf.predict(X_test)
+
+    curr_test_set_acc = accuracy_score(y_test, y_pred)
+    set_best_model(curr_test_set_acc, "decision tree classifier")
 
     print(f"============= Decision Tree Classifier Evaluation (Un-constrained) =============")
     print(f"Confusion Matrix: \n {confusion_matrix(y_test, y_pred)}")
@@ -261,8 +296,11 @@ def train_decsion_tree_classifier():
     print(f"Test Set Error: {test_set_error:.2f}")
     print(f"Cross-Validation Error: {1 - dt_clf_grid.best_score_:.2f}")
 
-    generate_classification_metrics(estimator=dt_clf, model_name="Decision Tree",
-                                    y_pred=y_pred, y_pred_probs=y_pred_probs, X_test_scaled=X_test)
+    curr_test_set_acc = accuracy_score(y_test, y_pred)
+    set_best_model(curr_test_set_acc, "decision tree classifier")
+
+    # generate_classification_metrics(estimator=dt_clf, model_name="Decision Tree",
+    #                                 y_pred=y_pred, y_pred_probs=y_pred_probs, X_test_scaled=X_test)
 
 
 def train_dt_bagging_classifier():
@@ -276,8 +314,11 @@ def train_dt_bagging_classifier():
     print(f"Training Set Error: {train_set_error:.2f}")
     print(f"Test Set Error: {test_set_error:.2f}")
 
-    generate_classification_metrics(estimator=bc, model_name="Bagging With Decision Tree",
-                                    y_pred=y_pred, y_pred_probs=y_pred_probs, X_test_scaled=X_test)
+    curr_test_set_acc = accuracy_score(y_test, y_pred)
+    set_best_model(curr_test_set_acc, "bagging classifier")
+
+    # generate_classification_metrics(estimator=bc, model_name="Bagging With Decision Tree",
+    #                                 y_pred=y_pred, y_pred_probs=y_pred_probs, X_test_scaled=X_test)
 
 
 def train_dt_bagging_oob_eval_classifier():
@@ -292,8 +333,11 @@ def train_dt_bagging_oob_eval_classifier():
     print(f"Test Set Accuracy: {test_set_accuracy:.2f}")
     print(f"Out-Of-Bag (OOB) Accuracy: {bc.oob_score_:.2f}")
 
-    generate_classification_metrics(estimator=bc, model_name="OOB Bagging",
-                                    y_pred=y_pred, y_pred_probs=y_pred_probs, X_test_scaled=X_test)
+    curr_test_set_acc = accuracy_score(y_test, y_pred)
+    set_best_model(curr_test_set_acc, "bagging classifier")
+
+    # generate_classification_metrics(estimator=bc, model_name="OOB Bagging",
+    #                                 y_pred=y_pred, y_pred_probs=y_pred_probs, X_test_scaled=X_test)
 
 
 def train_random_forest_classifier():
@@ -312,6 +356,9 @@ def train_random_forest_classifier():
     print(f"Best Parameters: {rf_grid.best_params_}")
     print(f"Best Cross-Validation Accuracy: {rf_grid.best_score_:.2f}")
     rf_clf = rf_grid.best_estimator_
+
+    # rf_clf = RandomForestClassifier(n_estimators=100, max_depth=5, random_state=10, oob_score=True)
+    rf_clf.fit(X_train, y_train)
     y_pred = rf_clf.predict(X_test)
     y_pred_probs = rf_clf.predict_proba(X_test)[:, 1]
 
@@ -319,10 +366,13 @@ def train_random_forest_classifier():
     test_set_accuracy = rf_clf.score(X_test, y_test)
     print(f"Training Set Accuracy: {train_set_accuracy:.2f}")
     print(f"Test Set Accuracy: {test_set_accuracy:.2f}")
-    print(f"OOB Score: {rf.oob_score_:.2f}")
+    print(f"OOB Score: {rf_clf.oob_score:.2f}")
 
-    generate_classification_metrics(estimator=rf_clf, model_name="Random Forest",
-                                    y_pred=y_pred, y_pred_probs=y_pred_probs, X_test_scaled=X_test)
+    curr_test_set_acc = accuracy_score(y_test, y_pred)
+    set_best_model(curr_test_set_acc, "random forest classifier")
+
+    # generate_classification_metrics(estimator=rf_clf, model_name="Random Forest",
+    #                                 y_pred=y_pred, y_pred_probs=y_pred_probs, X_test_scaled=X_test)
 
 
 def train_adaboost_classifier():
@@ -343,8 +393,15 @@ def train_adaboost_classifier():
     print(f"Training Set Accuracy: {train_set_accuracy:.2f}")
     print(f"Test Set Accuracy: {test_set_accuracy:.2f}")
 
-    generate_classification_metrics(estimator=adaboost_clf, model_name="Adaboost",
-                                    y_pred=y_pred, y_pred_probs=y_pred_probs, X_test_scaled=X_test)
+    curr_test_set_acc = accuracy_score(y_test, y_pred)
+    set_best_model(curr_test_set_acc, "adaboost classifier")
+
+    # test_data_predictions = adaboost_clf.predict(test_dataset_final.values)
+    # predictions_df = pd.DataFrame({"PassengerId": passenger_ids, "Survived": test_data_predictions})
+    # predictions_df.to_csv("./test_predictions.csv", index=False)
+
+    # generate_classification_metrics(estimator=adaboost_clf, model_name="Adaboost",
+    #                                 y_pred=y_pred, y_pred_probs=y_pred_probs, X_test_scaled=X_test)
 
 
 def train_gradientboost_classifier():
@@ -362,8 +419,15 @@ def train_gradientboost_classifier():
     print(f"Training Set Accuracy: {train_set_accuracy:.2f}")
     print(f"Test Set Accuracy: {test_set_accuracy:.2f}")
 
-    generate_classification_metrics(estimator=gradboost_clf, model_name="Gradient Boosting",
-                                    y_pred=y_pred, y_pred_probs=y_pred_probs, X_test_scaled=X_test)
+    curr_test_set_acc = accuracy_score(y_test, y_pred)
+    set_best_model(curr_test_set_acc, "gradient boosting")
+
+    # generate_classification_metrics(estimator=gradboost_clf, model_name="Gradient Boosting",
+    #                                 y_pred=y_pred, y_pred_probs=y_pred_probs, X_test_scaled=X_test)
+
+    test_data_predictions = gradboost_clf.predict(test_dataset_final.values)
+    predictions_df = pd.DataFrame({"PassengerId": passenger_ids, "Survived": test_data_predictions})
+    predictions_df.to_csv("./test_predictions.csv", index=False)
 
 
 def train_sgd_classifier():
@@ -383,8 +447,15 @@ def train_sgd_classifier():
     print(f"Training Set Accuracy: {train_set_accuracy:.2f}")
     print(f"Test Set Accuracy: {test_set_accuracy:.2f}")
 
-    generate_classification_metrics(estimator=gradboost_clf, model_name="Stochastic Gradient Boosting",
-                                    y_pred=y_pred, y_pred_probs=y_pred_probs, X_test_scaled=X_test)
+    curr_test_set_acc = accuracy_score(y_test, y_pred)
+    set_best_model(curr_test_set_acc, "sgdc")
+
+    # test_data_predictions = gradboost_clf.predict(test_dataset_final.values)
+    # predictions_df = pd.DataFrame({"PassengerId": passenger_ids, "Survived": test_data_predictions})
+    # predictions_df.to_csv("./test_predictions.csv", index=False)
+
+    # generate_classification_metrics(estimator=gradboost_clf, model_name="Stochastic Gradient Boosting",
+    #                                 y_pred=y_pred, y_pred_probs=y_pred_probs, X_test_scaled=X_test)
 
 
 if __name__ == "__main__":
@@ -394,7 +465,8 @@ if __name__ == "__main__":
     # train_decsion_tree_classifier()
     # train_dt_bagging_classifier()
     # train_dt_bagging_oob_eval_classifier()
-    # train_random_forest_classifier()
+    train_random_forest_classifier()
     # train_adaboost_classifier()
     # train_gradientboost_classifier()
-    train_sgd_classifier()
+    # train_sgd_classifier()
+    # predict_test_classes()
